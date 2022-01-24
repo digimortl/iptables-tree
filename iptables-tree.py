@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+
 from collections import defaultdict
 import re
+import sys
 from typing import Dict, List, NamedTuple, NoReturn, Optional, Sequence, Tuple
 
 
@@ -162,11 +166,21 @@ def parseTablesFromStream(stream):
     return tables
 
 
+def isUtf8Supported() -> bool:
+    return sys.stdout.encoding == 'utf-8'
+
+
+SYM_V = '\u2502' if isUtf8Supported() else '|'   # Vertical line drawing char
+SYM_VR = '\u251C' if isUtf8Supported() else '|'  # Vertical and right
+SYM_H = '\u2500' if isUtf8Supported() else '-'   # Horizontal
+SYM_UR = '\u2514' if isUtf8Supported() else '`'  # Up and right
+
+
 def printRuleSpecsOf(chain: Chain) -> NoReturn:
     loopDetectionCache = {chain.name}
 
     def printRuleSpec(ruleSpec: RuleSpec, prefix: str, isLast: bool):
-        print(prefix + ('`' if isLast else '|') + '-', end='')
+        print(prefix + (SYM_UR if isLast else SYM_VR) + SYM_H, end='')
 
         if ruleSpec.matches:
             print(f'{ruleSpec.matches} ', end='')
@@ -186,12 +200,12 @@ def printRuleSpecsOf(chain: Chain) -> NoReturn:
         print()
 
         prefix += (
-            (' ' if isLast else '|') +
+            (' ' if isLast else SYM_V) +
             (' ' * (len(ruleSpec.matches) + 1 if ruleSpec.matches else 0)) +
             '    ')
 
         if ruleSpec.target.jump.name in loopDetectionCache:
-            print(prefix + '`-' + '[[...LOOP...]]')
+            print(prefix + SYM_UR + SYM_H + '[[...LOOP...]]')
             return
 
         loopDetectionCache.add(ruleSpec.target.jump.name)
@@ -213,8 +227,6 @@ def printRuleSpecsOf(chain: Chain) -> NoReturn:
 
 
 if __name__ == '__main__':
-    import sys
-
     try:
         tables = parseTablesFromStream(sys.stdin)
     except ParseError as exc:
