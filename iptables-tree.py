@@ -2,6 +2,7 @@
 
 # -*- coding: utf-8 -*-
 
+from argparse import ArgumentParser
 from collections import defaultdict
 import re
 import sys
@@ -166,21 +167,26 @@ def parseTablesFromStream(stream):
     return tables
 
 
-def isUtf8Supported() -> bool:
-    return sys.stdout.encoding == 'utf-8'
+class Sym(NamedTuple):
+    V: str   # Vertical line drawing char
+    VR: str  # Vertical and right
+    H: str   # Horizontal
+    UR: str  # Up and right
 
 
-SYM_V = '\u2502' if isUtf8Supported() else '|'   # Vertical line drawing char
-SYM_VR = '\u251C' if isUtf8Supported() else '|'  # Vertical and right
-SYM_H = '\u2500' if isUtf8Supported() else '-'   # Horizontal
-SYM_UR = '\u2514' if isUtf8Supported() else '`'  # Up and right
+def findSym(charMap: str) -> Sym:
+    ascii = Sym('|', '|', '-', '`')
+    return {
+        'ascii': ascii,
+        'utf-8': Sym('\u2502', '\u251C', '\u2500', '\u2514'),
+    }.get(charMap, ascii)
 
 
-def printRuleSpecsOf(chain: Chain) -> NoReturn:
+def printRuleSpecsOf(chain: Chain, sym: Sym) -> NoReturn:
     loopDetectionCache = {chain.name}
 
     def printRuleSpec(ruleSpec: RuleSpec, prefix: str, isLast: bool):
-        print(prefix + (SYM_UR if isLast else SYM_VR) + SYM_H, end='')
+        print(prefix + (sym.UR if isLast else sym.VR) + sym.H, end='')
 
         if ruleSpec.matches:
             print(f'{ruleSpec.matches} ', end='')
@@ -200,12 +206,12 @@ def printRuleSpecsOf(chain: Chain) -> NoReturn:
         print()
 
         prefix += (
-            (' ' if isLast else SYM_V) +
+            (' ' if isLast else sym.V) +
             (' ' * (len(ruleSpec.matches) + 1 if ruleSpec.matches else 0)) +
             '    ')
 
         if ruleSpec.target.jump.name in loopDetectionCache:
-            print(prefix + SYM_UR + SYM_H + '[[...LOOP...]]')
+            print(prefix + sym.UR + sym.H + '[[...LOOP...]]')
             return
 
         loopDetectionCache.add(ruleSpec.target.jump.name)
@@ -227,11 +233,19 @@ def printRuleSpecsOf(chain: Chain) -> NoReturn:
 
 
 if __name__ == '__main__':
+    parser = ArgumentParser(description='Convert iptables-save format to pstree-like view')
+    parser.add_argument('-A', '--ascii', action='store_true', help='Use ASCII characters to draw the tree.')
+    ns = parser.parse_args()
+
     try:
         tables = parseTablesFromStream(sys.stdin)
     except ParseError as exc:
         print(str(exc), file=sys.stderr)
         sys.exit(1)
+
+    sym = findSym(sys.stdout.encoding)
+    if ns.ascii:
+        sym = findSym('ascii')
 
     for name, table in tables.items():
         print(f'*{name}')
@@ -247,6 +261,6 @@ if __name__ == '__main__':
             if chain.policy is None or chain.hasNoRules:
                 continue
 
-            printRuleSpecsOf(chain)
+            printRuleSpecsOf(chain, sym)
 
     sys.exit(0)
