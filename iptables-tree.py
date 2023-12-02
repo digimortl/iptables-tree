@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
-# -*- coding: utf-8 -*-
-
 from argparse import ArgumentParser
 from collections import defaultdict
 import re
 import sys
-from typing import Dict, List, NamedTuple, NoReturn, Optional, Sequence, Tuple
+from typing import Dict, List, NamedTuple, NoReturn, Optional, Tuple
 
 
 class Counters(NamedTuple):
@@ -66,6 +64,8 @@ RULE_RE = re.compile(r'''
     $
 ''', re.VERBOSE)
 
+COMMENT_RE = re.compile(r'-m\s*comment\s+--comment\s+".*?"')
+
 
 class ParseError(Exception):
     pass
@@ -80,7 +80,7 @@ def parsePolicy(line: str) -> Tuple[str, Optional[Policy]]:
     return chainName, Policy(verdict, Counters(int(pcnt), int(bcnt)))
 
 
-def parseRule(line: str) -> Dict[str, Optional[str]]:
+def parseRule(line: str, removeComments: bool) -> Dict[str, Optional[str]]:
 
     def strip(x: Optional[str]) -> str:
         return (x or '').strip()
@@ -92,6 +92,8 @@ def parseRule(line: str) -> Dict[str, Optional[str]]:
     rv = {}
     rv['chainName'] = strip(match.group('chain'))
     rv['matches'] = strip(match.group('matches'))
+    if removeComments:
+        rv['matches'] = COMMENT_RE.sub('', rv['matches'])
     rv['targetName'] = strip(match.group('target'))
     rv['perTargetOptions'] = strip(match.group('perTargetOptions'))
     rv['action'] = strip(match.group('action'))
@@ -100,7 +102,7 @@ def parseRule(line: str) -> Dict[str, Optional[str]]:
     return rv
 
 
-def parseTablesFromStream(stream):
+def parseTablesFromStream(stream, removeComments: bool):
     tables = defaultdict(dict)
 
     currentTable = None
@@ -135,7 +137,7 @@ def parseTablesFromStream(stream):
         # Parse the rule:
         #
         try:
-            ruleDict = parseRule(line)
+            ruleDict = parseRule(line, removeComments)
         except ParseError as exc:
             raise ParseError(f'Line {lino}: {line!r}: {exc!s}')
 
@@ -235,10 +237,11 @@ def printRuleSpecsOf(chain: Chain, sym: Sym) -> NoReturn:
 if __name__ == '__main__':
     parser = ArgumentParser(description='Convert iptables-save format to pstree-like view')
     parser.add_argument('-A', '--ascii', action='store_true', help='Use ASCII characters to draw the tree.')
+    parser.add_argument('--show-comments', action='store_true', help='Show comments to iptables rules.')
     ns = parser.parse_args()
 
     try:
-        tables = parseTablesFromStream(sys.stdin)
+        tables = parseTablesFromStream(sys.stdin, not ns.show_comments)
     except ParseError as exc:
         print(str(exc), file=sys.stderr)
         sys.exit(1)
