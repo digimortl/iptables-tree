@@ -5,54 +5,108 @@ rules tree to STDOUT. Use I/O-redirection provided by your shell to write to a f
 
 #### Example:
 ```
-$ iptables-save -t filter | ./iptables-tree
-*filter
-:INPUT ACCEPT [0:0]
-:FORWARD DROP [0:0]
-:OUTPUT ACCEPT [0:0]
--A INPUT
-   ├─-j MY_IN
-   │    ├─-i bond2.478 -j MY_IN_521a2e1b
-   │    │                 ├─-i bond2.478 -j MY_IN_521a2e1b_fbd7c0f4
-   │    │                 │                 ├─-i bond2.478 -p tcp -m tcp --dport 14700:15800 -j MY_IN_521a2e1b_fbd7c0f4_F
-   │    │                 │                 │                                                   └─-i bond2.478 -j MY_IN_521a2e1b_F
-   │    │                 │                 │                                                                     └─-i bond2.478 -j ACCEPT
-   │    │                 │                 ├─-i bond2.478 -p tcp -m tcp --dport 4200:5060 -j MY_IN_521a2e1b_fbd7c0f4_F
-   │    │                 │                 │                                                 └─-i bond2.478 -j MY_IN_521a2e1b_F
-   │    │                 │                 │                                                                   └─-i bond2.478 -j ACCEPT
-   │    │                 │                 └─-i bond2.478 -p udp -m udp --dport 5496 -j MY_IN_521a2e1b_fbd7c0f4_F
-   │    │                 │                                                              └─-i bond2.478 -j MY_IN_521a2e1b_F
-   │    │                 │                                                                                └─-i bond2.478 -j ACCEPT
-   │    │                 └─-i bond2.478 -j MY_IN_521a2e1b_1373d0cb
-   │    │                                   └─-i bond2.478 -p tcp -m tcp --dport 38200:57428 -j MY_IN_521a2e1b_1373d0cb_F
-   │    │                                                                                       └─-i bond2.478 -j MY_IN_521a2e1b_F
-   │    │                                                                                                         └─-i bond2.478 -j ACCEPT
-   │    └─-i bond2.362 -j MY_IN_733d7567a
-   │                      ├─-i bond2.362 -j MY_IN_733d7567a_1787d764
-   │                      │                 └─-i bond2.362 -p tcp -m tcp --dport 22 -j MY_IN_733d7567a_1787d764_F
-   │                      │                                                            └─-i bond2.362 -j MY_IN_733d7567a_F
-   │                      │                                                                              └─-i bond2.362 -j ACCEPT
-   │                      ├─-i bond2.362 -j MY_IN_733d7567a_d10af457
-   │                      │                 ├─-i bond2.362 -p tcp -m tcp --dport 53 -j MY_IN_733d7567a_d10af457_F
-   │                      │                 │                                          └─-i bond2.362 -j MY_IN_733d7567a_F
-   │                      │                 │                                                            └─-i bond2.362 -j ACCEPT
-   │                      │                 └─-i bond2.362 -p udp -m udp --dport 53 -j MY_IN_733d7567a_d10af457_F
-   │                      │                                                            └─-i bond2.362 -j MY_IN_733d7567a_F
-   │                      │                                                                              └─-i bond2.362 -j ACCEPT
-   │                      ├─-i bond2.362 -j MY_IN_733d7567a_58af8740
-   │                      │                 └─-d 224.0.0.251/32 -i bond2.362 -p udp -m udp --dport 4267 -j MY_IN_733d7567a_58af8740_F
-   │                      │                                                                                └─-i bond2.362 -j MY_IN_733d7567a_F
-   │                      │                                                                                                  └─-i bond2.362 -j ACCEPT
-   │                      └─-i bond2.362 -j MY_IN_733d7567a_42fc1d83
-   │                                        └─-s 192.168.9.0/24 -i bond2.362 -j MY_IN_733d7567a_42fc1d83_F
-   │                                                                            └─-i bond2.362 -j MY_IN_733d7567a_F
-   │                                                                                              └─-i bond2.362 -j ACCEPT
-   └─-j MY_IN_TAIL
-        ├─-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-        ├─-i lo -j ACCEPT
-        ├─-p icmp -j ACCEPT
-        ├─-m conntrack --ctstate INVALID -j DROP
-        └─-j REJECT --reject-with icmp-host-prohibited
+% ssh core@worker-node-0 sudo iptables-save -t nat | python3 ./iptables-tree.py                
+*nat
+:PREROUTING ACCEPT [22:1340]
+:INPUT ACCEPT [5:320]
+:OUTPUT ACCEPT [469:28396]
+:POSTROUTING ACCEPT [486:29416]
+-A PREROUTING
+   └─-j KUBE-SERVICES
+        ├─-d 10.254.0.1/32 -p tcp  -m tcp --dport 443 -j KUBE-SVC-NPX46M4PTMTKRN6Y
+        │                                                ├─! -s 10.100.0.0/16 -d 10.254.0.1/32 -p tcp  -m tcp --dport 443 -j KUBE-MARK-MASQ
+        │                                                │                                                                   └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                ├─ -m statistic --mode random --probability 0.33333333349 -j KUBE-SEP-KSYZFRVBAHO3UYKY
+        │                                                │                                                            ├─-s 192.168.1.80/32  -j KUBE-MARK-MASQ
+        │                                                │                                                            │                        └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                │                                                            └─-p tcp  -m tcp -j DNAT [unsupported revision]
+        │                                                ├─ -m statistic --mode random --probability 0.50000000000 -j KUBE-SEP-4NXZOMPO3OIGIHOH
+        │                                                │                                                            ├─-s 192.168.2.18/32  -j KUBE-MARK-MASQ
+        │                                                │                                                            │                        └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                │                                                            └─-p tcp  -m tcp -j DNAT [unsupported revision]
+        │                                                └─-j KUBE-SEP-53CZXCCEBWWNYZ7X
+        │                                                     ├─-s 192.168.3.82/32  -j KUBE-MARK-MASQ
+        │                                                     │                        └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                     └─-p tcp  -m tcp -j DNAT [unsupported revision]
+        ├─-d 10.254.124.194/32 -p tcp  -m tcp --dport 12345 -j KUBE-SVC-GYUT6LJFX34TXRZB
+        │                                                      ├─! -s 10.100.0.0/16 -d 10.254.124.194/32 -p tcp  -m tcp --dport 12345 -j KUBE-MARK-MASQ
+        │                                                      │                                                                         └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                      └─-j KUBE-SEP-KANST5L7MCNDJ4PP
+        │                                                           ├─-s 10.100.0.2/32  -j KUBE-MARK-MASQ
+        │                                                           │                      └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                           └─-p tcp  -m tcp -j DNAT [unsupported revision]
+        ├─-d 10.254.216.143/32 -p tcp  -m tcp --dport 443 -j KUBE-SVC-LUWOVUBMMENYS4C5
+        │                                                    ├─! -s 10.100.0.0/16 -d 10.254.216.143/32 -p tcp  -m tcp --dport 443 -j KUBE-MARK-MASQ
+        │                                                    │                                                                       └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                    └─-j KUBE-SEP-UDZ4WRQJYCIV757T
+        │                                                         ├─-s 10.100.5.2/32  -j KUBE-MARK-MASQ
+        │                                                         │                      └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                         └─-p tcp  -m tcp -j DNAT [unsupported revision]
+        ├─-d 10.254.0.10/32 -p tcp  -m tcp --dport 53 -j KUBE-SVC-ERIFXISQEP7F7OF4
+        │                                                ├─! -s 10.100.0.0/16 -d 10.254.0.10/32 -p tcp  -m tcp --dport 53 -j KUBE-MARK-MASQ
+        │                                                │                                                                   └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                ├─ -m statistic --mode random --probability 0.50000000000 -j KUBE-SEP-4ABE7GWA3NUIFMZ3
+        │                                                │                                                            ├─-s 10.100.2.2/32  -j KUBE-MARK-MASQ
+        │                                                │                                                            │                      └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                │                                                            └─-p tcp  -m tcp -j DNAT [unsupported revision]
+        │                                                └─-j KUBE-SEP-BVZHU4XEX7KSKFVE
+        │                                                     ├─-s 10.100.5.5/32  -j KUBE-MARK-MASQ
+        │                                                     │                      └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                     └─-p tcp  -m tcp -j DNAT [unsupported revision]
+        ├─-d 10.254.0.10/32 -p tcp  -m tcp --dport 9153 -j KUBE-SVC-JD5MR3NA4I4DYORP
+        │                                                  ├─! -s 10.100.0.0/16 -d 10.254.0.10/32 -p tcp  -m tcp --dport 9153 -j KUBE-MARK-MASQ
+        │                                                  │                                                                     └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                  ├─ -m statistic --mode random --probability 0.50000000000 -j KUBE-SEP-JCKA4RWVBEU37RQG
+        │                                                  │                                                            ├─-s 10.100.2.2/32  -j KUBE-MARK-MASQ
+        │                                                  │                                                            │                      └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                  │                                                            └─-p tcp  -m tcp -j DNAT [unsupported revision]
+        │                                                  └─-j KUBE-SEP-ACORHR333NBTL5O6
+        │                                                       ├─-s 10.100.5.5/32  -j KUBE-MARK-MASQ
+        │                                                       │                      └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                       └─-p tcp  -m tcp -j DNAT [unsupported revision]
+        ├─-d 10.254.0.10/32 -p udp  -m udp --dport 53 -j KUBE-SVC-TCOU7JCQXEZGVUNU
+        │                                                ├─! -s 10.100.0.0/16 -d 10.254.0.10/32 -p udp  -m udp --dport 53 -j KUBE-MARK-MASQ
+        │                                                │                                                                   └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                ├─ -m statistic --mode random --probability 0.50000000000 -j KUBE-SEP-KVG3FTMRLVAZEEDA
+        │                                                │                                                            ├─-s 10.100.2.2/32  -j KUBE-MARK-MASQ
+        │                                                │                                                            │                      └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                │                                                            └─-p udp  -m udp -j DNAT [unsupported revision]
+        │                                                └─-j KUBE-SEP-5ULIPHUUNKIYVF34
+        │                                                     ├─-s 10.100.5.5/32  -j KUBE-MARK-MASQ
+        │                                                     │                      └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                     └─-p udp  -m udp -j DNAT [unsupported revision]
+        ├─-d 10.254.36.60/32 -p tcp  -m tcp --dport 443 -j KUBE-SVC-4HQ2X6RJ753IMQ2F
+        │                                                  ├─! -s 10.100.0.0/16 -d 10.254.36.60/32 -p tcp  -m tcp --dport 443 -j KUBE-MARK-MASQ
+        │                                                  │                                                                     └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                  └─-j KUBE-SEP-XNZKJJUVRF4YFPCQ
+        │                                                       ├─-s 10.100.4.4/32  -j KUBE-MARK-MASQ
+        │                                                       │                      └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                       └─-p tcp  -m tcp -j DNAT [unsupported revision]
+        ├─-d 10.254.161.159/32 -p tcp  -m tcp --dport 8000 -j KUBE-SVC-4GCQP7GTYLI53KTV
+        │                                                     ├─! -s 10.100.0.0/16 -d 10.254.161.159/32 -p tcp  -m tcp --dport 8000 -j KUBE-MARK-MASQ
+        │                                                     │                                                                        └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                     └─-j KUBE-SEP-IVT2Y2NK23SUXR6O
+        │                                                          ├─-s 10.100.4.3/32  -j KUBE-MARK-MASQ
+        │                                                          │                      └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                          └─-p tcp  -m tcp -j DNAT [unsupported revision]
+        ├─-d 10.254.53.246/32 -p tcp  -m tcp --dport 80 -j KUBE-SVC-OVTWZ4GROBJZO4C5
+        │                                                  ├─! -s 10.100.0.0/16 -d 10.254.53.246/32 -p tcp  -m tcp --dport 80 -j KUBE-MARK-MASQ
+        │                                                  │                                                                     └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                  └─-j KUBE-SEP-UKGAPEWCTNNMKZAR
+        │                                                       ├─-s 10.100.3.16/32  -j KUBE-MARK-MASQ
+        │                                                       │                       └─-j MARK --set-xmark 0x4000/0x4000
+        │                                                       └─-p tcp  -m tcp -j DNAT [unsupported revision]
+        └─ -m addrtype --dst-type LOCAL -j KUBE-NODEPORTS
+                                           └─-p tcp  -m tcp --dport 31509 -j KUBE-EXT-OVTWZ4GROBJZO4C5
+                                                                             ├─-j KUBE-MARK-MASQ
+                                                                             │    └─-j MARK --set-xmark 0x4000/0x4000
+                                                                             └─-j KUBE-SVC-OVTWZ4GROBJZO4C5
+                                                                                  ├─! -s 10.100.0.0/16 -d 10.254.53.246/32 -p tcp  -m tcp --dport 80 -j KUBE-MARK-MASQ
+                                                                                  │                                                                     └─-j MARK --set-xmark 0x4000/0x4000
+                                                                                  └─-j KUBE-SEP-UKGAPEWCTNNMKZAR
+                                                                                       ├─-s 10.100.3.16/32  -j KUBE-MARK-MASQ
+                                                                                       │                       └─-j MARK --set-xmark 0x4000/0x4000
+                                                                                       └─-p tcp  -m tcp -j DNAT [unsupported revision]
 ...
 ```
 
